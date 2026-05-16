@@ -7,9 +7,9 @@ const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const GROQ_KEY = process.env.GROQ_API_KEY;
 
-console.log("Key loaded:", !!GEMINI_KEY, "Length:", GEMINI_KEY ? GEMINI_KEY.length : 0);
+console.log("Groq key loaded:", !!GROQ_KEY, "Length:", GROQ_KEY ? GROQ_KEY.length : 0);
 
 app.post("/api/gemini", (req, res) => {
   const { prompt } = req.body;
@@ -18,32 +18,35 @@ app.post("/api/gemini", (req, res) => {
   console.log("Received prompt:", prompt.slice(0, 50));
 
   const payload = JSON.stringify({
-    contents: [{ parts: [{ text: prompt }] }]
+    model: "llama-3.3-70b-versatile",
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 1024,
   });
 
   const options = {
-    hostname: "generativelanguage.googleapis.com",
-    path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+    hostname: "api.groq.com",
+    path: "/openai/v1/chat/completions",
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${GROQ_KEY}`,
       "Content-Length": Buffer.byteLength(payload)
     }
   };
 
   const apiReq = https.request(options, (apiRes) => {
     let data = "";
-    console.log("Gemini status:", apiRes.statusCode);
+    console.log("Groq status:", apiRes.statusCode);
     apiRes.on("data", chunk => data += chunk);
     apiRes.on("end", () => {
-      console.log("Gemini raw response:", data.slice(0, 300));
+      console.log("Groq raw response:", data.slice(0, 300));
       try {
         const parsed = JSON.parse(data);
         if (parsed.error) {
-          console.log("Gemini error:", parsed.error.message);
+          console.log("Groq error:", parsed.error.message);
           return res.status(500).json({ error: parsed.error.message });
         }
-        const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const text = parsed.choices?.[0]?.message?.content || "";
         console.log("Success, text length:", text.length);
         res.json({ text });
       } catch (e) {
@@ -64,8 +67,8 @@ app.post("/api/gemini", (req, res) => {
 
 app.get("/api/health", (_, res) => res.json({ status: "ok" }));
 app.get("/api/keycheck", (_, res) => res.json({
-  keyLoaded: !!GEMINI_KEY,
-  keyLength: GEMINI_KEY ? GEMINI_KEY.length : 0
+  keyLoaded: !!GROQ_KEY,
+  keyLength: GROQ_KEY ? GROQ_KEY.length : 0
 }));
 app.get("/", (_, res) => res.json({ status: "ok" }));
 
