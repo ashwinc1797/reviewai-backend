@@ -9,9 +9,13 @@ app.use(express.json());
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
+console.log("Key loaded:", !!GEMINI_KEY, "Length:", GEMINI_KEY ? GEMINI_KEY.length : 0);
+
 app.post("/api/gemini", (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: "Missing prompt" });
+
+  console.log("Received prompt:", prompt.slice(0, 50));
 
   const payload = JSON.stringify({
     contents: [{ parts: [{ text: prompt }] }]
@@ -29,20 +33,28 @@ app.post("/api/gemini", (req, res) => {
 
   const apiReq = https.request(options, (apiRes) => {
     let data = "";
+    console.log("Gemini status:", apiRes.statusCode);
     apiRes.on("data", chunk => data += chunk);
     apiRes.on("end", () => {
+      console.log("Gemini raw response:", data.slice(0, 300));
       try {
         const parsed = JSON.parse(data);
-        if (parsed.error) return res.status(500).json({ error: parsed.error.message });
+        if (parsed.error) {
+          console.log("Gemini error:", parsed.error.message);
+          return res.status(500).json({ error: parsed.error.message });
+        }
         const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        console.log("Success, text length:", text.length);
         res.json({ text });
       } catch (e) {
+        console.log("Parse error:", e.message);
         res.status(500).json({ error: "Parse error: " + e.message });
       }
     });
   });
 
   apiReq.on("error", (e) => {
+    console.log("Request error:", e.message);
     res.status(500).json({ error: e.message });
   });
 
