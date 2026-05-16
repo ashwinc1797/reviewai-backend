@@ -32,7 +32,8 @@ app.post("/api/gemini", async (req, res) => {
   }
 });
 
-app.get("/health", (_, res) => res.json({ status: "ok" }));
+app.get("/api/health", (_, res) => res.json({ status: "ok" }));
+app.get("/", (_, res) => res.json({ status: "ok" }));
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log("Proxy running on port " + PORT));
+app.listen(PORT, () => console.log("Running on port " + PORT));
